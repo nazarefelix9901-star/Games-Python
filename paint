@@ -1,0 +1,84 @@
+#!/data/data/com.termux/files/usr/bin/python
+
+import curses
+import time
+
+WORLD_W, WORLD_H = 100, 100
+VIEW_W, VIEW_H = 20, 20
+
+stdscr = curses.initscr()
+curses.curs_set(0)
+curses.start_color()
+curses.use_default_colors()
+stdscr.keypad(True)
+stdscr.nodelay(True)
+
+# Cores
+curses.init_pair(1, curses.COLOR_BLUE, -1)
+curses.init_pair(2, curses.COLOR_RED, -1)
+curses.init_pair(3, curses.COLOR_GREEN, -1)
+curses.init_pair(4, curses.COLOR_YELLOW, -1)
+curses.init_pair(5, curses.COLOR_WHITE, -1)
+
+# Mundo e entidades
+world = {}  # (y,x) -> {'char','cor','solido'}
+player_y, player_x = 50, 50
+cor_atual = 1
+
+def draw_view():
+    top = max(0, player_y - VIEW_H//2)
+    left = max(0, player_x - VIEW_W//2)
+    bottom = min(WORLD_H, top+VIEW_H)
+    right = min(WORLD_W, left+VIEW_W)
+    stdscr.clear()
+    # Desenha mundo
+    for y in range(top, bottom):
+        for x in range(left, right):
+            if y==0 or x==0 or y==WORLD_H-1 or x==WORLD_W-1:
+                stdscr.addch(y-top, x-left, '#', curses.color_pair(5))
+            elif (y,x) in world:
+                w = world[(y,x)]
+                stdscr.addch(y-top, x-left, w['char'], curses.color_pair(w['cor']))
+    # Desenha jogador
+    py,px = player_y, player_x
+    stdscr.addch(py-top, px-left, '@', curses.color_pair(cor_atual))
+    stdscr.refresh()
+
+def pode_mover(ny,nx):
+    if ny<=0 or nx<=0 or ny>=WORLD_H-1 or nx>=WORLD_W-1:
+        return False
+    if (ny,nx) in world and world[(ny,nx)]['solido']:
+        return False
+    return True
+
+def main():
+    global player_y, player_x, cor_atual, world
+
+    try:
+        while True:
+            draw_view()
+            key = stdscr.getch()
+
+            if key == ord('q'):
+                break
+            elif key == ord('w') and pode_mover(player_y - 1, player_x):
+                player_y -= 1
+            elif key == ord('s') and pode_mover(player_y + 1, player_x):
+                player_y += 1
+            elif key == ord('a') and pode_mover(player_y, player_x - 1):
+                player_x -= 1
+            elif key == ord('d') and pode_mover(player_y, player_x + 1):
+                player_x += 1
+            elif key == ord('c'):
+                cor_atual = cor_atual % 5 + 1  # Troca cor do jogador
+            elif key == ord('p'):
+                # Pinta o bloco atual
+                world[(player_y, player_x)] = {'char': '█', 'cor': cor_atual, 'solido': False}
+
+            time.sleep(0.05)
+
+    finally:
+        curses.endwin()
+
+if __name__ == "__main__":
+    main()
