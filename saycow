@@ -1,0 +1,115 @@
+#!/data/data/com.termux/files/usr/bin/python
+
+import curses
+import os
+import random
+import textwrap
+
+# Frases via fortune ou fallback
+def get_fortune():
+    try:
+        return os.popen("fortune").read().strip()
+    except:
+        frases = [
+            "A persistência realiza o impossível.",
+            "Quem não arrisca, não petisca.",
+            "O terminal é teu reino, Jonathan.",
+            "ASCII é arte, não apenas código.",
+            "O impossível é só questão de opinião."
+        ]
+        return random.choice(frases)
+
+# Mascotes
+mascotes = [
+    ("Vaca tradicional", [
+        "       (__)",
+        "       (oo)",
+        " /------\\/",
+        "/ |    ||",
+        "*  /\\---/\\",
+        "   ~~   ~~"
+    ]),
+    ("Porco", [
+        "       _._ _..._ .-',     _.._(`))",
+        "      '-. `     '  /-._.-'    ',/",
+        "        )         \\            '.",
+        "       / _    _    |             \\",
+        "      |  o    o    /              |",
+        "      \\   .-.                     ;",
+        "       '-('' ).-'       ,'       ;",
+        "          '-;           |      .'",
+        "             \\           \\    /",
+        "             | 7  .__  _.-\\   \\",
+        "             | |  |  ``/  /`  /",
+        "        _.__/ \\|  |_/  /  \\_/",
+        "       /`-._ \\_._/__/ /'._/"
+    ]),
+    ("Caveira", [
+        "       ______",
+        "    .-'      '-.",
+        "   /            \\",
+        "  |              |",
+        "  |,  .-.  .-.  ,|",
+        "  | )(_o/  \\o_)( |",
+        "  |/     /\\     \\|",
+        "  (_     ^^     _)",
+        "   \\__|IIIIII|__/",
+        "    | \\IIIIII/ |",
+        "    \\          /",
+        "     `--------`"
+    ])
+]
+
+# Função segura pra imprimir texto
+def safe_addstr(win, y, x, text, style=0):
+    try:
+        max_y, max_x = win.getmaxyx()
+        if y < max_y:
+            win.addstr(y, max(0, x), text[:max_x - 1], style)
+    except curses.error:
+        pass
+
+# Interface principal com curses
+def main(stdscr):
+    curses.curs_set(0)
+    stdscr.clear()
+    stdscr.nodelay(False)
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+
+    frase = get_fortune()
+    mascote_nome, mascote_arte = random.choice(mascotes)
+
+    max_y, max_x = stdscr.getmaxyx()
+    y_offset = 2
+    x_offset = max_x // 2 - max(len(line) for line in mascote_arte) // 2
+
+    # Título
+    safe_addstr(stdscr, 0, max_x // 2 - 10, f"🐾 {mascote_nome} motivacional 🐾", curses.color_pair(1) | curses.A_BOLD)
+
+    # Mascote
+    for i, line in enumerate(mascote_arte):
+        safe_addstr(stdscr, y_offset + i, x_offset, line, curses.color_pair(2))
+
+    # Frase
+    wrapped = textwrap.wrap(frase, max_x - 4)
+    for i, line in enumerate(wrapped):
+        safe_addstr(stdscr, y_offset + len(mascote_arte) + 2 + i, 2, line, curses.color_pair(3))
+
+    # Rodapé
+    safe_addstr(stdscr, max_y - 2, 2, "[Q] Sair  |  [R] Nova frase", curses.A_DIM)
+
+    stdscr.refresh()
+
+    while True:
+        key = stdscr.getch()
+        if key == ord('q'):
+            break
+        elif key == ord('r'):
+            main(stdscr)
+            break
+
+if __name__ == "__main__":
+    curses.wrapper(main)
