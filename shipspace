@@ -1,0 +1,151 @@
+#!/usr/bin/env python
+
+import curses
+import time
+import random
+
+SHIP = ["___^___", "<==O==>"]
+BULLET = "I"
+ENEMY = ["<|H|>", "   ^"]
+OBSTACLE_PATTERNS = ["###", "######", "#########"]
+FIRE_INTERVAL = 0.25
+max_score = 0
+
+def main(stdscr):
+    curses.curs_set(0)
+    stdscr.nodelay(True)
+    stdscr.timeout(50)
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)   # Nave
+    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)    # Inimigos
+    curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK) # Balas
+    curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Obstáculos
+    curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLACK)  # HUD
+
+    while True:
+        result = run_game(stdscr)
+        if result == "quit":
+            break
+
+def run_game(stdscr):
+    global max_score
+    max_y, max_x = stdscr.getmaxyx()
+    ship_x = max_x // 2
+    ship_y = max_y - 3
+    bullets = []
+    enemies = []
+    obstacles = []
+    score = 0
+    kills = 0
+    start_time = time.time()
+    last_fire = time.time()
+    auto_fire = False
+
+    while True:
+        stdscr.clear()
+        elapsed = time.time() - start_time
+        difficulty = 1 + int(elapsed // 10)
+
+        key = stdscr.getch()
+        if key in [ord('a'), curses.KEY_LEFT]:
+            ship_x = max(0, min(max_x - len(SHIP[0]), ship_x - 2))
+        elif key in [ord('d'), curses.KEY_RIGHT]:
+            ship_x = max(0, min(max_x - len(SHIP[0]), ship_x + 2))
+        elif key in [ord('w'), curses.KEY_UP]:
+            ship_y = max(0, min(max_y - len(SHIP), ship_y - 1))
+        elif key in [ord('s'), curses.KEY_DOWN]:
+            ship_y = max(0, min(max_y - len(SHIP), ship_y + 1))
+        elif key == ord(' '):
+            auto_fire = not auto_fire
+        elif key == ord('q'):
+            return "quit"
+        elif key == ord('r'):
+            return "restart"
+
+        # Disparo automático
+        if auto_fire and time.time() - last_fire > FIRE_INTERVAL:
+            left_bullet_x = ship_x + 1
+            right_bullet_x = ship_x + len(SHIP[0]) - 2
+            if 0 <= left_bullet_x < max_x:
+                bullets.append([ship_y - 1, left_bullet_x])
+            if 0 <= right_bullet_x < max_x:
+                bullets.append([ship_y - 1, right_bullet_x])
+            last_fire = time.time()
+
+        # Atualiza balas
+        for bullet in bullets[:]:
+            bullet[0] -= 1
+            if bullet[0] < 0:
+                bullets.remove(bullet)
+
+        # Gera inimigos
+        if random.random() < 0.05 * difficulty:
+            enemy_x = random.randint(0, max_x - len(ENEMY[0]))
+            enemies.append([0, enemy_x])
+
+        # Move inimigos
+        for enemy in enemies[:]:
+            enemy[0] += 1
+            if enemy[0] >= max_y:
+                enemies.remove(enemy)
+
+        # Gera obstáculos
+        if random.random() < 0.03 * difficulty:
+            pattern = random.choice(OBSTACLE_PATTERNS)
+            obs_x = random.randint(0, max_x - len(pattern))
+            obstacles.append([0, obs_x, pattern])
+
+        # Move obstáculos
+        for obs in obstacles[:]:
+            obs[0] += 1
+            if obs[0] >= max_y:
+                obstacles.remove(obs)
+
+        # Colisões: balas vs inimigos
+        for bullet in bullets[:]:
+            for enemy in enemies[:]:
+                if abs(bullet[0] - enemy[0]) < 1 and abs(bullet[1] - enemy[1]) < len(ENEMY[0]):
+                    bullets.remove(bullet)
+                    enemies.remove(enemy)
+                    score += 10
+                    kills += 1
+                    break
+
+        # Colisões: nave vs inimigos
+        for enemy in enemies:
+            if ship_y <= enemy[0] < ship_y + len(SHIP) and ship_x <= enemy[1] < ship_x + len(SHIP[0]):
+                return "quit"
+
+        # Colisões: nave vs obstáculos
+        for obs in obstacles:
+            if ship_y <= obs[0] < ship_y + len(SHIP) and ship_x <= obs[1] < ship_x + len(obs[2]):
+                return "quit"
+
+        # Desenha nave
+        for i, line in enumerate(SHIP):
+            stdscr.addstr(ship_y + i, ship_x, line, curses.color_pair(1))
+
+        # Desenha balas
+        for bullet in bullets:
+            stdscr.addstr(bullet[0], bullet[1], BULLET, curses.color_pair(3))
+
+        # Desenha inimigos
+        for enemy in enemies:
+            for i, line in enumerate(ENEMY):
+                if 0 <= enemy[0] + i < max_y:
+                    stdscr.addstr(enemy[0] + i, enemy[1], line, curses.color_pair(2))
+
+        # Desenha obstáculos
+        for obs in obstacles:
+            stdscr.addstr(obs[0], obs[1], obs[2], curses.color_pair(4))
+
+        # HUD
+        stdscr.addstr(0, 2, f"Score: {score}  Kills: {kills}  Max: {max_score}", curses.color_pair(5))
+
+        stdscr.refresh()
+        time.sleep(0.05)
+
+    max_score = max(max_score, score)
+
+if __name__ == "__main__":
+    curses.wrapper(main)
