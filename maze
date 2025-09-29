@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+
+import curses
+import random
+
+# Símbolos
+WALL = '#'
+PLAYER = '@'
+EXIT = 'X'
+GOAL = 'O'
+EMPTY = ' '
+
+HEIGHT = 25
+WIDTH = 50
+
+def generate_maze():
+    maze = []
+    for y in range(HEIGHT):
+        row = []
+        for x in range(WIDTH):
+            if y == 0 or y == HEIGHT - 1 or x == 0 or x == WIDTH - 1:
+                row.append(WALL)
+            else:
+                row.append(WALL if random.random() < 0.25 else EMPTY)
+        maze.append(row)
+    maze[1][1] = EMPTY
+    maze[HEIGHT - 2][WIDTH - 2] = GOAL
+    maze[0][0] = EXIT
+    return maze
+
+def draw_maze(stdscr, maze, player_pos):
+    stdscr.clear()
+    max_y, max_x = stdscr.getmaxyx()
+    if HEIGHT >= max_y or WIDTH >= max_x:
+        stdscr.addstr(0, 0, "Terminal pequeno! Aumente a tela.")
+        stdscr.refresh()
+        stdscr.getch()
+        return
+
+    for y, row in enumerate(maze):
+        for x, char in enumerate(row):
+            if (y, x) == player_pos:
+                stdscr.addstr(y, x, PLAYER, curses.color_pair(2))
+            elif char == WALL:
+                stdscr.addstr(y, x, WALL, curses.color_pair(3))
+            elif char == GOAL:
+                stdscr.addstr(y, x, GOAL, curses.color_pair(4))
+            elif char == EXIT:
+                stdscr.addstr(y, x, EXIT, curses.color_pair(5))
+            else:
+                stdscr.addstr(y, x, EMPTY)
+    stdscr.refresh()
+
+def move_player(maze, pos, direction):
+    y, x = pos
+    dy, dx = direction
+    ny, nx = y + dy, x + dx
+    if 0 <= ny < HEIGHT and 0 <= nx < WIDTH and maze[ny][nx] != WALL:
+        return (ny, nx)
+    return pos
+
+def victory_screen(stdscr):
+    stdscr.clear()
+    stdscr.addstr(HEIGHT // 2 - 1, WIDTH // 2 - 4, "YOU WIN", curses.A_BOLD | curses.color_pair(4))
+    stdscr.addstr(HEIGHT // 2 + 1, WIDTH // 2 - 6, "[R] Restart", curses.color_pair(2))
+    stdscr.addstr(HEIGHT // 2 + 2, WIDTH // 2 - 5, "[X] Exit", curses.color_pair(5))
+    stdscr.refresh()
+
+    while True:
+        key = stdscr.getch()
+        if key == ord('r'):
+            return 'restart'
+        elif key == ord('x'):
+            return 'exit'
+
+def main(stdscr):
+    curses.curs_set(0)
+    stdscr.nodelay(False)
+    curses.start_color()
+    curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_BLACK)   # Jogador
+    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_BLACK)  # Parede
+    curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)  # Objetivo
+    curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK)    # Saída
+
+    while True:
+        maze = generate_maze()
+        player_pos = (1, 1)
+
+        while True:
+            draw_maze(stdscr, maze, player_pos)
+            key = stdscr.getch()
+
+            if key == ord('q'):
+                return
+            elif key == curses.KEY_UP or key == ord('w'):
+                player_pos = move_player(maze, player_pos, (-1, 0))
+            elif key == curses.KEY_DOWN or key == ord('s'):
+                player_pos = move_player(maze, player_pos, (1, 0))
+            elif key == curses.KEY_LEFT or key == ord('a'):
+                player_pos = move_player(maze, player_pos, (0, -1))
+            elif key == curses.KEY_RIGHT or key == ord('d'):
+                player_pos = move_player(maze, player_pos, (0, 1))
+
+            y, x = player_pos
+            if maze[y][x] == GOAL:
+                result = victory_screen(stdscr)
+                if result == 'restart':
+                    break
+                elif result == 'exit':
+                    return
+
+if __name__ == "__main__":
+    curses.wrapper(main)
