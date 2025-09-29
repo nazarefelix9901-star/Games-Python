@@ -3,7 +3,7 @@
 import curses
 import random
 
-palavras = ["curso", "manteiga", "pao", "trabalho", "tesoura", "pedra", "suco", "portugues", "papel", "meteoro", "asteroide", "pedra", "python", "terminal", "labirinto", "forca>
+palavras = ["curso", "manteiga", "pao", "trabalho", "tesoura", "pedra", "suco", "portugues", "papel", "meteoro", "asteroide", "pedra", "python", "terminal", "labirinto", "forca"]
 
 
 def main(stdscr):
