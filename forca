@@ -1,0 +1,57 @@
+#!nano/usr/bin/env python3
+
+import curses
+import random
+
+palavras = ["curso", "manteiga", "pao", "trabalho", "tesoura", "pedra", "suco", "portugues", "papel", "meteoro", "asteroide", "pedra", "python", "terminal", "labirinto", "forca>
+
+
+def main(stdscr):
+    curses.curs_set(0)
+    stdscr.nodelay(False)
+    stdscr.clear()
+
+    palavra = random.choice(palavras)
+    letras_descobertas = ["_" for _ in palavra]
+    letras_usadas = []
+    tentativas = 6
+
+    while True:
+        stdscr.clear()
+        stdscr.addstr(1, 2, "Jogo da Forca")
+        stdscr.addstr(3, 2, "Palavra: " + " ".join(letras_descobertas))
+        stdscr.addstr(5, 2, f"Tentativas restantes: {tentativas}")
+        stdscr.addstr(6, 2, "Letras usadas: " + ", ".join(letras_usadas))
+        stdscr.addstr(8, 2, "Digite uma letra (a-z) ou 'q' para sair:")
+
+        stdscr.refresh()
+        letra = stdscr.getkey().lower()
+
+        if letra == "q":
+            break
+        if not letra.isalpha() or len(letra) != 1:
+            continue
+        if letra in letras_usadas:
+            continue
+
+        letras_usadas.append(letra)
+
+        if letra in palavra:
+            for i, l in enumerate(palavra):
+                if l == letra:
+                    letras_descobertas[i] = letra
+        else:
+            tentativas -= 1
+
+        if "_" not in letras_descobertas:
+            stdscr.addstr(10, 2, f"🎉 Você venceu! A palavra era: {palavra}")
+            stdscr.refresh()
+            stdscr.getch()
+            break
+        elif tentativas == 0:
+            stdscr.addstr(10, 2, f"💀 Game over! A palavra era: {palavra}")
+            stdscr.refresh()
+            stdscr.getch()
+            break
+
+curses.wrapper(main)
